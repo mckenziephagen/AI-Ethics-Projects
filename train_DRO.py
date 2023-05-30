@@ -54,10 +54,10 @@ if __name__ == "__main__":
 
     model = ConnectomeNet(x_train.size()[1], 5000)
 
-    lr = 1e-6
+    lr = 1e-3
     weight_decay = 1e-5
-    num_epochs = 30
-    batch_size = 128
+    num_epochs = 100
+    batch_size = 256
 
     train_dataset = BOLDDataset(x_train,y_train, gender_train)
     val_dataset = BOLDDataset(x_val,y_val, gender_val)
@@ -72,10 +72,12 @@ if __name__ == "__main__":
         lr=lr,
         weight_decay=weight_decay
     )
-    criterion = nn.MSELoss()
+    # Reduction needs to be set to none.
+
+    criterion = nn.MSELoss(reduction='none')
 
     eval_metric = PearsonCorrCoef()
-    loss_computer = LossComputer(criterion, True)
+    loss_computer = LossComputer(criterion=criterion, is_robust=True, normalize_loss=True)
 
     for epoch in range(num_epochs):
 
@@ -83,7 +85,7 @@ if __name__ == "__main__":
 
             pred_y = model(x).flatten()
 
-            loss = loss_computer.loss(pred_y, y, gender)
+            loss = torch.sqrt(loss_computer.loss(pred_y, y, gender))
 
             optimizer.zero_grad()
             loss.backward()
@@ -100,10 +102,33 @@ if __name__ == "__main__":
 
                     correlation = eval_metric(model(x_val).flatten(), y_val)
                     pred_val = model(x_val).flatten()
-                    val_loss = torch.sqrt(criterion(pred_val, y_val))
+                    val_loss = torch.sqrt(torch.mean(criterion(pred_val, y_val)))
 
                     print('Validation Loss: {}; Pearson correlation: {}; r^2: {}'.format(
-                        val_loss.item(), np.round(correlation, 2), r2(pred_val, y_val)
+                        val_loss.item(),
+                        np.round(correlation, 2),
+                        r2(pred_val, y_val)
                     ))
 
     torch.save(model.state_dict(), "model_DRO.pth")
+    pred_test = model(x_test)
+    pred_test = pred_test.flatten()
+    test_loss = torch.mean(criterion(pred_test, y_test))
+
+    gender_test = gender_test.detach().cpu().numpy()
+
+    correlation = eval_metric(pred_test, y_test).detach().cpu().numpy()
+
+    print('Test Loss: {}; Pearson correlation: {}; r2: {}'.format(
+        test_loss.item()/len(pred_test),
+        np.round(correlation, 2),
+        r2(pred_test, y_test)
+        ))
+    print("MSE: male;", torch.mean(criterion(y_test[gender_test==1],pred_test[gender_test==1] )))
+    print("MSE: female;", torch.mean(criterion(y_test[gender_test==0],pred_test[gender_test==0] )))
+
+    print(
+          eval_metric(pred_test[gender_test==1], y_test[gender_test==1]),
+          eval_metric(pred_test[gender_test==0], y_test[gender_test==0])
+        )
+    print(calculate_regression_measures(y_test, pred_test.detach().cpu().numpy(), gender_test))

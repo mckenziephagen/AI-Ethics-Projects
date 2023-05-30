@@ -40,6 +40,9 @@ if __name__ == "__main__":
     gender_val = torch.from_numpy(x_val.pop('Gender').values).float()
     gender_test = torch.from_numpy(x_test.pop('Gender').values).float()
 
+
+
+
     # Convert pandas dataframe to PyTorch tensor
     x_train = torch.from_numpy(x_train.values).float()
     y_train = torch.from_numpy(y_train.values).float()

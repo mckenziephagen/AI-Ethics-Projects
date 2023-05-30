@@ -76,8 +76,9 @@ class LossComputer:
         # compute per-sample and per-group losses
         per_sample_losses = self.criterion(yhat, y).cuda()
         group_loss, group_count = self.compute_group_avg(per_sample_losses, group_idx)
-        group_acc, group_count = self.compute_group_avg((torch.argmax(yhat,1)==y).float(), group_idx)
 
+        #group_acc, group_count = self.compute_group_avg((torch.argmax(yhat,1)==y).float(), group_idx)
+        group_acc = 0
         # update historical losses
         self.update_exp_avg_loss(group_loss, group_count)
 
@@ -96,11 +97,14 @@ class LossComputer:
         return actual_loss
 
     def compute_robust_loss(self, group_loss, group_count):
+
         adjusted_loss = group_loss
+
         if torch.all(self.adj>0):
             adjusted_loss += self.adj/torch.sqrt(self.group_counts)
         if self.normalize_loss:
             adjusted_loss = adjusted_loss/(adjusted_loss.sum())
+
         self.adv_probs = self.adv_probs * torch.exp(self.step_size*adjusted_loss.data)
         self.adv_probs = self.adv_probs/(self.adv_probs.sum())
 
@@ -131,13 +135,17 @@ class LossComputer:
 
     def compute_group_avg(self, losses, group_idx):
         # compute observed counts and mean loss for each group
+
         group_map = (group_idx == torch.arange(self.n_groups).unsqueeze(1).long().cuda()).float()
         group_count = group_map.sum(1)
         group_denom = group_count + (group_count==0).float() # avoid nans
+
         group_loss = (group_map @ losses.view(-1))/group_denom
+
         return group_loss, group_count
 
     def update_exp_avg_loss(self, group_loss, group_count):
+
         prev_weights = (1 - self.gamma*(group_count>0).float()) * (self.exp_avg_initialized>0).float()
         curr_weights = 1 - prev_weights
         self.exp_avg_loss = self.exp_avg_loss * prev_weights + group_loss*curr_weights

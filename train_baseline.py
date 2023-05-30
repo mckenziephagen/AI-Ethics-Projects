@@ -19,13 +19,15 @@ if __name__ == "__main__":
 
     
     argParser = argparse.ArgumentParser()
-    argParser.add_argument("-d", "--demographic", help="your name")
-    argParser.add_argument("-c", "--cog_measure", help="your name")
+    argParser.add_argument("-d", "--demographic", default="Gender")
+    argParser.add_argument("-c", "--cog_measure", default="CotTotalComp_Unadj")
     args = argParser.parse_args()
     
     demo = args.demographic
     cog_measure = args.cog_measure
     
+    print("Cognitive measure: ", cog_measure) 
+    print("By demographic: ", demo)
     df = pd.read_pickle("data/connectome.pkl")
 
     label = pd.read_csv("data/cognition_scores.csv")

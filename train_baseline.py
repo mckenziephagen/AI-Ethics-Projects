@@ -10,12 +10,22 @@ import pandas as pd
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
 from torchmetrics import R2Score,PearsonCorrCoef
+import argparse 
 
 from model import *
 from utilities import *
 
 if __name__ == "__main__":
 
+    
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument("-d", "--demographic", help="your name")
+    argParser.add_argument("-c", "--cog_measure", help="your name")
+    args = argParser.parse_args()
+    
+    demo = args.demographic
+    cog_measure = args.cog_measure
+    
     df = pd.read_pickle("data/connectome.pkl")
 
     label = pd.read_csv("data/cognition_scores.csv")
@@ -23,22 +33,23 @@ if __name__ == "__main__":
 
     demographics = pd.read_csv("data/demographic.csv")
 
-    df = df.merge(demographics[["Gender","Subject"]], how='left', on='Subject')
+    df = df.merge(demographics[[demo,"Subject"]], how='left', on='Subject')
 
     # Convert Gender to 0 and 1
-    X = df.copy()
-    X["Gender"] = np.where(X["Gender"] == "M", 1, 0)
+    X = df #copying overwhelms system memory
+    if demo == 'Gender': 
+        X["Gender"] = np.where(X["Gender"] == "M", 1, 0)
 
     # Split the data into train and test set
-    x_train, x_test, y_train, y_test = train_test_split(X, label.iloc[:, 1], test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(X, label.iloc[:, 1], test_size=0.2)
 
     # Further split the training data into training and validation sets
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
 
     # Save the Gender feature for later use before converting the rest to PyTorch tensors
-    gender_train = torch.from_numpy(x_train.pop('Gender').values).float()
-    gender_val = torch.from_numpy(x_val.pop('Gender').values).float()
-    gender_test = torch.from_numpy(x_test.pop('Gender').values).float()
+    gender_train = torch.from_numpy(x_train.pop(demo).values).float()
+    gender_val = torch.from_numpy(x_val.pop(demo).values).float()
+    gender_test = torch.from_numpy(x_test.pop(demo).values).float()
 
 
 

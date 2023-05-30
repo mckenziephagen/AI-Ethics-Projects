@@ -10,54 +10,82 @@ import pandas as pd
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.model_selection import train_test_split
 from torchmetrics import R2Score,PearsonCorrCoef
+from sklearn import preprocessing
 
 from model import *
 from utilities import *
 
 if __name__ == "__main__":
 
-    df = pd.read_pickle("data/connectome.pkl")
+    pt_id =  pd.read_csv('data/subjectIDs.txt', sep=" ", header=None)
+    pt_id.rename(columns={ pt_id.columns[0]: "Subject" }, inplace = True)
+
+    data = pd.read_csv("data/ICA25/netmats1.txt", sep=" ", header=None)
+    data["Subject"] = pt_id["Subject"]
 
     label = pd.read_csv("data/cognition_scores.csv")
     label.rename(columns={ label.columns[0]: "Subject" }, inplace = True)
 
     demographics = pd.read_csv("data/demographic.csv")
+    data = data.merge(demographics[["Gender","Subject"]], how='left', on='Subject')
+    data = data.merge(label[["Subject", "CogTotalComp_Unadj"]], how='left', on='Subject')
 
-    df = df.merge(demographics[["Gender","Subject"]], how='left', on='Subject')
+    data.dropna(subset=['CogTotalComp_Unadj'], inplace=True)
 
     # Convert Gender to 0 and 1
-    X = df.copy()
-    X["Gender"] = np.where(X["Gender"] == "M", 1, 0)
+    X = data.copy()
+    X["Gender"] = np.where(X["Gender"] == "M", 1.0, 0.0)
+    X.pop("Subject")
 
     # Split the data into train and test set
-    x_train, x_test, y_train, y_test = train_test_split(X, label.iloc[:, 1], test_size=0.2, random_state=42)
+
+    # X = X.fillna(lambda x: x.mean())
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        X.iloc[:, :-1], 
+        X["CogTotalComp_Unadj"].values, 
+        test_size=0.2, 
+        random_state=20
+    )
 
     # Further split the training data into training and validation sets
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2, random_state=42)
 
     # Save the Gender feature for later use before converting the rest to PyTorch tensors
-    gender_train = torch.from_numpy(x_train.pop('Gender').values).float().cuda()
-    gender_val = torch.from_numpy(x_val.pop('Gender').values).float().cuda()
-    gender_test = torch.from_numpy(x_test.pop('Gender').values).float().cuda()
+    # gender_train = torch.from_numpy(x_train.pop('Gender').values).float()
+    # gender_val = torch.from_numpy(x_val.pop('Gender').values).float()
+    # gender_test = torch.from_numpy(x_test.pop('Gender').values).float()
 
+    gender_train = torch.from_numpy(x_train['Gender'].values).float().cuda()
+    gender_val = torch.from_numpy(x_val['Gender'].values).float().cuda()
+    gender_test = torch.from_numpy(x_test['Gender'].values).float().cuda()
     # Convert pandas dataframe to PyTorch tensor
-    x_train = torch.from_numpy(x_train.values).float()
-    y_train = torch.from_numpy(y_train.values).float()
 
-    x_val = torch.from_numpy(x_val.values).float()
-    y_val = torch.from_numpy(y_val.values).float()
+    normalizer = preprocessing.Normalizer()
 
-    x_test = torch.from_numpy(x_test.values).float()
-    y_test = torch.from_numpy(y_test.values).float()
+    x_train = normalizer.fit_transform(x_train.values)
+    x_val  = normalizer.transform(x_val.values)
+    x_test  = normalizer.transform(x_test.values)
+
+    x_train = torch.from_numpy(x_train).float()
+    y_train = torch.from_numpy(y_train).float()
+
+    x_val = torch.from_numpy(x_val).float()
+    y_val = torch.from_numpy(y_val).float()
+
+    x_test = torch.from_numpy(x_test).float()
+    y_test = torch.from_numpy(y_test).float()
 
     # init the model
 
-    model = ConnectomeNet(x_train.size()[1], 5000)
+    model = ConnectomeNet(x_train.size()[1], 200)
 
     lr = 1e-3
-    weight_decay = 1e-5
-    num_epochs = 100
-    batch_size = 256
+    weight_decay = 1e-6
+    num_epochs = 60
+    batch_size = 32
+    patience = 10  # Number of epochs to wait for improvement before stopping
+
 
     train_dataset = BOLDDataset(x_train,y_train, gender_train)
     val_dataset = BOLDDataset(x_val,y_val, gender_val)
@@ -77,7 +105,7 @@ if __name__ == "__main__":
     criterion = nn.MSELoss(reduction='none')
 
     eval_metric = PearsonCorrCoef()
-    loss_computer = LossComputer(criterion=criterion, is_robust=True, normalize_loss=True)
+    loss_computer = LossComputer(criterion=criterion, is_robust=True, normalize_loss=True, group_counts=torch.tensor([478, 549]).float())
 
     for epoch in range(num_epochs):
 

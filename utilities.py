@@ -3,6 +3,8 @@ import torch
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from torch.utils.data import Dataset
+from torchmetrics import R2Score,PearsonCorrCoef
+
 
 class BOLDDataset(Dataset):
     def __init__(self, features, targets, genders):
@@ -34,6 +36,7 @@ class LossComputer:
         self,
         criterion,
         is_robust,
+        group_counts,
         dataset=None,
         alpha=0.2,
         gamma=0.1,
@@ -41,7 +44,7 @@ class LossComputer:
         min_var_weight=0,
         step_size=0.01,
         normalize_loss=False,
-        btl=False
+        btl=False,
     ):
         self.criterion = criterion
         self.is_robust = is_robust
@@ -53,7 +56,7 @@ class LossComputer:
         self.btl = btl
 
         self.n_groups = 2 #dataset.n_groups
-        self.group_counts = torch.tensor([478, 549]).float().cuda() #dataset.group_counts().cuda()
+        self.group_counts = group_counts.cuda() #dataset.group_counts().cuda()
         self.group_frac = self.group_counts/self.group_counts.sum()
         self.group_str = "Male" #dataset.group_str
 
@@ -238,6 +241,24 @@ class LossComputer:
                 f'adv prob = {self.adv_probs[group_idx]:3f}   '
                 f'acc = {self.avg_group_acc[group_idx]:.3f}\n')
         logger.flush()
+
+
+def calculate_mse(actual, predicted):
+    return np.sqrt(np.mean((actual - predicted) ** 2))
+
+def plot_scatter_and_compute_metrics(actual, predicted, gender, gender_str):
+    eval_metric = PearsonCorrCoef()
+    gender_specific_actual = actual[gender]
+    gender_specific_predicted = predicted[gender]
+    
+    # Convert tensors to numpy arrays for calculation and plotting
+    gender_specific_actual_np = gender_specific_actual.numpy()
+    gender_specific_predicted_np = gender_specific_predicted.detach().numpy()
+    
+    print(f"MSE ({gender_str}): {calculate_mse(gender_specific_actual_np, gender_specific_predicted_np)}")
+    print(f"Pearson correlation ({gender_str}): {eval_metric(gender_specific_predicted, gender_specific_actual)}")
+    
+    # plt.scatter(gender_specific_actual_np, gender_specific_predicted_np, label=gender_str)
 
 
 def grad_reverse(x):

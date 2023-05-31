@@ -28,22 +28,31 @@ if __name__ == "__main__":
     
     print("Cognitive measure: ", cog_measure) 
     print("By demographic: ", demo)
-    df = pd.read_pickle("data/connectome.pkl")
-
-    label = pd.read_csv("data/cognition_scores.csv")
-    label.rename(columns={ label.columns[0]: "Subject" }, inplace = True)
-
-    demographics = pd.read_csv("data/demographic.csv")
-
-    df = df.merge(demographics[[demo,"Subject"]], how='left', on='Subject')
+    df = pd.read_csv("HCP_PTN1200/netmats/3T_HCP1200_MSMAll_d50_ts2/netmats1.txt", 
+                     sep=' ', header=None)
+   
+    label = pd.read_csv("data/all_cog.csv", index_col=0)
+    
+    demographics = pd.read_csv("data/demographic.csv", index_col='Subject')
+    sub_ids = pd.read_csv('HCP_PTN1200/subjectIDs.txt', header=None)
+    df['Subject'] = sub_ids
+    
+    df = df.set_index('Subject')
+    
+    df = df.merge(demographics[[demo]], left_index=True, right_index=True)
 
     # Convert Gender to 0 and 1
     X = df #copying overwhelms system memory
+    
+    label = label.loc[label.index.isin(X.index), [ cog_measure]].dropna()
+
+    X = X.loc[X.index.isin(label.index)]
+
     if demo == 'Gender': 
         X["Gender"] = np.where(X["Gender"] == "M", 1, 0)
 
     # Split the data into train and test set
-    x_train, x_test, y_train, y_test = train_test_split(X, label.iloc[:, 1], test_size=0.2)
+    x_train, x_test, y_train, y_test = train_test_split(X, label.loc[:, cog_measure], test_size=0.2)
 
     # Further split the training data into training and validation sets
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.2)
@@ -72,7 +81,7 @@ if __name__ == "__main__":
 
     lr = 1e-6
     weight_decay = 1e-5
-    num_epochs = 30
+    num_epochs = 100
     batch_size = 128
 
     dataset = TensorDataset(x_train,y_train)
@@ -86,7 +95,7 @@ if __name__ == "__main__":
     )
     criterion = nn.MSELoss()
 
-    eval_metric = PearsonCorrCoef()
+    eval_metric = R2Score()
 
     for epoch in range(num_epochs):
 

@@ -26,20 +26,27 @@ if __name__ == "__main__":
         1
     ).to(device)
 
-    optimizer = torch.optim.Adam(
+    predictor = Predictor(64).to(device)
+
+    optimizer_net = torch.optim.Adam(
         model.parameters(),
         lr=1e-3
+    )
+
+    optimizer_predictor = torch.optim.Adam(
+        predictor.parameters(),
+        lr=1e-3,
+        weight_decay = 1e-5
     )
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 
-    criterion = nn.MSELoss(reduction='none')
-    loss_computer = LossComputer(criterion=criterion, is_robust=True, normalize_loss=True, group_counts=torch.tensor([478, 549]).float())
-
+    loss_fn = torch.nn.MSELoss()
     losses = []
     eval_metric = PearsonCorrCoef().to(device)
     total_step = 10
+    eps = 1e-7
 
     for epoch in range(0, 100):
 
@@ -47,16 +54,47 @@ if __name__ == "__main__":
         loss = 0
 
         for batch in train_loader:
-
             batch = batch.to(device)
 
-            optimizer.zero_grad()
-            out = model(batch).flatten()
+            feat_out, pred_y = model.forward_lnl(batch)
+            feat_out = feat_out.to(device)
 
-            loss = torch.sqrt(loss_computer.loss(out, batch.y, batch.gender))
+            _, pred_bias_prob = predictor(feat_out)
+
+            loss_pred = torch.sqrt(loss_fn(pred_y.flatten(), batch.y))
+            loss_bias = torch.mean(torch.sum(pred_bias_prob*torch.log(pred_bias_prob + eps)))
+
+            loss = loss_pred + loss_bias
+            optimizer_net.zero_grad()
+            optimizer_predictor.zero_grad()
+
+
+            loss = loss_pred + loss_bias
+            optimizer_net.zero_grad()
+            optimizer_predictor.zero_grad()
 
             loss.backward()
-            optimizer.step()
+
+            optimizer_net.step()
+
+            optimizer_net.zero_grad()
+            optimizer_predictor.zero_grad()
+            
+            feat_label = grad_reverse(feat_out)
+            pred_label, _ = predictor(feat_label)
+
+            # import ipdb; ipdb.set_trace()
+            
+            bceloss = nn.BCELoss()
+            loss_beta = bceloss(pred_label, batch.gender.flatten()).requires_grad_()
+            loss_beta.backward()
+
+            optimizer_net.step()
+            optimizer_predictor.step()
+
+            optimizer_net.zero_grad()
+            optimizer_predictor.zero_grad()
+
 
         model.eval()
         losses.append(loss.item())
@@ -75,7 +113,7 @@ if __name__ == "__main__":
                     pred_test = pred_test.flatten()
 
                     correlation = eval_metric(pred_test, batch.y).detach().cpu().numpy()
-                    test_loss = torch.sqrt(loss_computer.loss(pred_test, batch.y, batch.gender))
+                    test_loss = torch.sqrt(loss_fn(pred_test, batch.y))
 
                     print('Testing Loss: {}; Pearson correlation: {}; r^2: {}'.format(
                         test_loss.item(),

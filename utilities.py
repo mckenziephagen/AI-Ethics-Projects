@@ -321,8 +321,8 @@ def plot_scatter_and_compute_metrics(actual, predicted, gender, gender_str):
     gender_specific_predicted_np = gender_specific_predicted
 
     print(f"MSE ({gender_str}): {calculate_mse(gender_specific_actual_np, gender_specific_predicted_np)}")
-    # print(f"Pearson correlation ({gender_str}): {eval_metric(torch.from_numpy(gender_specific_predicted),
-    #                                                           torch.from_numpy(gender_specific_actual))}")
+    print(f"Pearson correlation ({gender_str}): {eval_metric(torch.from_numpy(gender_specific_predicted), torch.from_numpy(gender_specific_actual))}")
+    print(f" r^2: {r2(torch.from_numpy(gender_specific_predicted), torch.from_numpy(gender_specific_actual))}")
 
     # plt.scatter(gender_specific_actual_np, gender_specific_predicted_np, label=gender_str)
 

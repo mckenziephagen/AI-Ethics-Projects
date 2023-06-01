@@ -68,9 +68,9 @@ class Predictor(nn.Module):
 
         self.layers = nn.Sequential(
             nn.Linear(input_size, input_size//2),
-            nn.LeakyReLU(0.05),
+            nn.ReLU(),
             nn.Linear(input_size//2, input_size//4),
-            nn.LeakyReLU(0.05),
+            nn.ReLU(),
             nn.Linear(input_size//4, 1)
         )
         self.sigmoid = nn.Sigmoid()
@@ -203,3 +203,29 @@ class GraphNetwork(torch.nn.Module):
         x = self.linear(x)
 
         return x.float()
+    
+    def forward_lnl(self, data):
+        """ Performs a forward pass on our simplified cGCN.
+
+        Parameters:
+        data (Data): Graph being passed into network.
+
+        Returns:
+        torch.Tensor (N x 2): Probability distribution over class labels.
+        """
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+
+        x = self.conv1(x, edge_index)
+        x = self.bn1(x)
+        x = F.relu(x)
+
+        x = self.conv2(x, edge_index)
+        x = self.bn2(x)
+        x = F.relu(x)
+
+        x = self.conv3(x, edge_index)
+        x = self.bn3(x)
+
+        x = global_mean_pool(x, batch)
+
+        return x.float(), self.linear(x).float()

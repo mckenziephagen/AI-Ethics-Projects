@@ -122,7 +122,6 @@ if __name__ == "__main__":
             loss_pred = torch.sqrt(MSELoss(pred_y.flatten(), y))
             loss_bias = torch.mean(torch.sum(pred_bias_prob*torch.log(pred_bias_prob + eps)))
 
-
             loss = loss_pred + loss_bias
             optimizer_net.zero_grad()
             optimizer_predictor.zero_grad()

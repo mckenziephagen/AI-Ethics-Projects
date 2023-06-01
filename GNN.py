@@ -48,7 +48,7 @@ if __name__ == "__main__":
             batch = batch.to(device)
 
             optimizer.zero_grad()
-            out = model(batch)
+            out = model(batch).flatten()
 
             loss = loss_fn(out, batch.y)
 
@@ -65,7 +65,6 @@ if __name__ == "__main__":
                 f'Training Loss: {torch.sqrt(loss):.4f}, '
             )
 
-
             with torch.no_grad():
                 for batch in test_loader:
 
@@ -73,7 +72,7 @@ if __name__ == "__main__":
                     pred_test = pred_test.flatten()
 
                     correlation = eval_metric(pred_test, batch.y).detach().cpu().numpy()
-                    val_loss = torch.sqrt(loss_fn(pred_test, batch.y.flatten()))
+                    val_loss = torch.sqrt(loss_fn(pred_test, batch.y))
 
                 print('Testing Loss: {}; Pearson correlation: {}; r^2: {}'.format(
                     val_loss.item(),

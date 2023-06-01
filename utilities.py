@@ -1,10 +1,71 @@
 import pandas as pd
 import torch
 import numpy as np
+import networkx as nx
+
 from sklearn.linear_model import LogisticRegression
+
 from torch.utils.data import Dataset
 from torchmetrics import R2Score,PearsonCorrCoef
 
+from torch_geometric.utils import from_networkx
+from torch_geometric.data import InMemoryDataset, Data, DataLoader
+
+from networkx.convert_matrix import from_numpy_array
+from networkx.convert_matrix import from_numpy_matrix
+
+class DevDataset(InMemoryDataset):
+    def __init__(self, root, transform=None, pre_transform=None, neighbors=10):
+        self.neighbors = neighbors
+        super().__init__(root, transform, pre_transform)
+        self.data, self.slices = torch.load(self.processed_paths[0])
+
+    @property
+    def processed_file_names(self):
+        return ['data.pt']
+
+    def process(self):
+        """ Converts raw data into GNN-readable format by constructing
+        graphs out of connectivity matrices.
+        """
+        # Paths of connectivity matrices
+
+        graphs = []
+
+        corr_matrix_list = np.loadtxt('data/corr_matrix.csv', delimiter=',',  skiprows=1)
+        pcorr_matrix_list = np.loadtxt('data/pcorr_matrix.csv', delimiter=',',  skiprows=1)
+        labels = torch.from_numpy(np.loadtxt('data/labels.csv', delimiter=',',  skiprows=1))
+
+        # import ipdb; ipdb.set_trace()
+
+        for i in range(pcorr_matrix_list.shape[0]):
+
+            pcorr_matrix_np = pcorr_matrix_list[i].reshape(50, 50)
+            index = np.abs(pcorr_matrix_np).argsort(axis=1)
+
+            n_rois = pcorr_matrix_np.shape[0]
+
+            # Take only the top k correlates to reduce number of edges
+            for j in range(n_rois):
+                for k in range(n_rois - self.neighbors):
+                    pcorr_matrix_np[j, index[j, k]] = 0
+                for k in range(n_rois - self.neighbors, n_rois):
+                    pcorr_matrix_np[j, index[j, k]] = 1
+
+            pcorr_matrix_nx = from_numpy_array(pcorr_matrix_np)
+            pcorr_matrix_data = from_networkx(pcorr_matrix_nx)
+
+            # Correlation matrix which will serve as our features
+            corr_matrix_np = corr_matrix_list[i].reshape(50, 50)
+
+            pcorr_matrix_data.x = torch.tensor(corr_matrix_np).float()
+            pcorr_matrix_data.y = torch.tensor(labels[i][0]).float()
+
+            # Add to running list of all dataset items
+            graphs.append(pcorr_matrix_data)
+
+        data, slices = self.collate(graphs)
+        torch.save((data, slices), self.processed_paths[0])
 
 class BOLDDataset(Dataset):
     def __init__(self, features, targets, genders):
@@ -250,14 +311,14 @@ def plot_scatter_and_compute_metrics(actual, predicted, gender, gender_str):
     eval_metric = PearsonCorrCoef()
     gender_specific_actual = actual[gender]
     gender_specific_predicted = predicted[gender]
-    
+
     # Convert tensors to numpy arrays for calculation and plotting
     gender_specific_actual_np = gender_specific_actual.numpy()
     gender_specific_predicted_np = gender_specific_predicted.detach().numpy()
-    
+
     print(f"MSE ({gender_str}): {calculate_mse(gender_specific_actual_np, gender_specific_predicted_np)}")
     print(f"Pearson correlation ({gender_str}): {eval_metric(gender_specific_predicted, gender_specific_actual)}")
-    
+
     # plt.scatter(gender_specific_actual_np, gender_specific_predicted_np, label=gender_str)
 
 

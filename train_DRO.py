@@ -86,7 +86,6 @@ if __name__ == "__main__":
     batch_size = 32
     patience = 10  # Number of epochs to wait for improvement before stopping
 
-
     train_dataset = BOLDDataset(x_train,y_train, gender_train)
     val_dataset = BOLDDataset(x_val,y_val, gender_val)
     test_dataset = BOLDDataset(x_test,y_test, gender_test)

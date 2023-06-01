@@ -37,11 +37,9 @@ class DevDataset(InMemoryDataset):
         corr_matrix_list = np.loadtxt('data/corr_matrix.csv', delimiter=',',  skiprows=1)
         pcorr_matrix_list = np.loadtxt('data/pcorr_matrix.csv', delimiter=',',  skiprows=1)
         labels = torch.from_numpy(np.loadtxt('data/labels.csv', delimiter=',',  skiprows=1))
-        
+
         demographics["Gender"] = np.where(demographics["Gender"] == "M", 1.0, 0.0)
         gender_info = demographics["Gender"].values
-
-        # import ipdb; ipdb.set_trace()
 
         for i in range(pcorr_matrix_list.shape[0]):
 
@@ -323,8 +321,8 @@ def plot_scatter_and_compute_metrics(actual, predicted, gender, gender_str):
     gender_specific_predicted_np = gender_specific_predicted
 
     print(f"MSE ({gender_str}): {calculate_mse(gender_specific_actual_np, gender_specific_predicted_np)}")
-    print(f"Pearson correlation ({gender_str}): {eval_metric(torch.from_numpy(gender_specific_predicted),
-                                                              torch.from_numpy(gender_specific_actual))}")
+    # print(f"Pearson correlation ({gender_str}): {eval_metric(torch.from_numpy(gender_specific_predicted),
+    #                                                           torch.from_numpy(gender_specific_actual))}")
 
     # plt.scatter(gender_specific_actual_np, gender_specific_predicted_np, label=gender_str)
 

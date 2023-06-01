@@ -9,10 +9,9 @@ from torch.utils.data import Dataset
 from torchmetrics import PearsonCorrCoef
 
 from torch_geometric.utils import from_networkx
-from torch_geometric.data import InMemoryDataset, Data, DataLoader
+from torch_geometric.data import InMemoryDataset, Data
 
 from networkx.convert_matrix import from_numpy_array
-from networkx.convert_matrix import from_numpy_matrix
 
 
 class DevDataset(InMemoryDataset):

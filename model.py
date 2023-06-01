@@ -194,6 +194,5 @@ class GraphNetwork(torch.nn.Module):
 
         x = global_mean_pool(x, batch)
         x = self.linear(x)
-        # x = F.softmax(x, dim=1)
 
         return x.float()

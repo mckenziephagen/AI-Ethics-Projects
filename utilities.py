@@ -59,7 +59,7 @@ class DevDataset(InMemoryDataset):
             corr_matrix_np = corr_matrix_list[i].reshape(50, 50)
 
             pcorr_matrix_data.x = torch.tensor(corr_matrix_np).float()
-            pcorr_matrix_data.y = torch.tensor(labels[i][0]).float()
+            pcorr_matrix_data.y = torch.tensor(labels[i][1]).float()
 
             # Add to running list of all dataset items
             graphs.append(pcorr_matrix_data)

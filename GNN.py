@@ -32,7 +32,7 @@ if __name__ == "__main__":
     )
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 
     loss_fn = torch.nn.MSELoss()
     losses = []
@@ -47,7 +47,6 @@ if __name__ == "__main__":
         for batch in train_loader:
             batch = batch.to(device)
 
-            # print(batch.x)
             optimizer.zero_grad()
             out = model(batch)
 
@@ -61,10 +60,11 @@ if __name__ == "__main__":
 
         if (epoch+1) % total_step == 0:
 
-            print(f'Epoch: {epoch + 1:02d}, '
-                f'Training Loss: {torch.sqrt(loss):.4f}, ')
-                # f'Train: {100 * train_result:.2f}%, '
-                # f'Test: {100 * test_result:.2f}%')
+            print(
+                f'Epoch: {epoch + 1:02d}, '
+                f'Training Loss: {torch.sqrt(loss):.4f}, '
+            )
+
 
             with torch.no_grad():
                 for batch in test_loader:
@@ -73,7 +73,7 @@ if __name__ == "__main__":
                     pred_test = pred_test.flatten()
 
                     correlation = eval_metric(pred_test, batch.y).detach().cpu().numpy()
-                    val_loss = torch.sqrt(loss_fn(pred_test, batch.y))
+                    val_loss = torch.sqrt(loss_fn(pred_test, batch.y.flatten()))
 
                 print('Testing Loss: {}; Pearson correlation: {}; r^2: {}'.format(
                     val_loss.item(),

@@ -6,13 +6,14 @@ import networkx as nx
 from sklearn.linear_model import LogisticRegression
 
 from torch.utils.data import Dataset
-from torchmetrics import R2Score,PearsonCorrCoef
+from torchmetrics import PearsonCorrCoef
 
 from torch_geometric.utils import from_networkx
 from torch_geometric.data import InMemoryDataset, Data, DataLoader
 
 from networkx.convert_matrix import from_numpy_array
 from networkx.convert_matrix import from_numpy_matrix
+
 
 class DevDataset(InMemoryDataset):
     def __init__(self, root, transform=None, pre_transform=None, neighbors=10):
@@ -31,10 +32,14 @@ class DevDataset(InMemoryDataset):
         # Paths of connectivity matrices
 
         graphs = []
-
+        
+        demographics = pd.read_csv("data/demographic.csv")
         corr_matrix_list = np.loadtxt('data/corr_matrix.csv', delimiter=',',  skiprows=1)
         pcorr_matrix_list = np.loadtxt('data/pcorr_matrix.csv', delimiter=',',  skiprows=1)
         labels = torch.from_numpy(np.loadtxt('data/labels.csv', delimiter=',',  skiprows=1))
+        
+        demographics["Gender"] = np.where(demographics["Gender"] == "M", 1.0, 0.0)
+        gender_info = demographics["Gender"].values
 
         # import ipdb; ipdb.set_trace()
 
@@ -60,6 +65,7 @@ class DevDataset(InMemoryDataset):
 
             pcorr_matrix_data.x = torch.tensor(corr_matrix_np).float()
             pcorr_matrix_data.y = torch.tensor(labels[i][1]).float()
+            pcorr_matrix_data.gender = torch.tensor(gender_info[i]).float()
 
             # Add to running list of all dataset items
             graphs.append(pcorr_matrix_data)
@@ -313,11 +319,12 @@ def plot_scatter_and_compute_metrics(actual, predicted, gender, gender_str):
     gender_specific_predicted = predicted[gender]
 
     # Convert tensors to numpy arrays for calculation and plotting
-    gender_specific_actual_np = gender_specific_actual.numpy()
-    gender_specific_predicted_np = gender_specific_predicted.detach().numpy()
+    gender_specific_actual_np = gender_specific_actual
+    gender_specific_predicted_np = gender_specific_predicted
 
     print(f"MSE ({gender_str}): {calculate_mse(gender_specific_actual_np, gender_specific_predicted_np)}")
-    print(f"Pearson correlation ({gender_str}): {eval_metric(gender_specific_predicted, gender_specific_actual)}")
+    print(f"Pearson correlation ({gender_str}): {eval_metric(torch.from_numpy(gender_specific_predicted),
+                                                              torch.from_numpy(gender_specific_actual))}")
 
     # plt.scatter(gender_specific_actual_np, gender_specific_predicted_np, label=gender_str)
 

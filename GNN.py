@@ -72,10 +72,23 @@ if __name__ == "__main__":
                     pred_test = pred_test.flatten()
 
                     correlation = eval_metric(pred_test, batch.y).detach().cpu().numpy()
-                    val_loss = torch.sqrt(loss_fn(pred_test, batch.y))
+                    test_loss = torch.sqrt(loss_fn(pred_test, batch.y))
 
-                print('Testing Loss: {}; Pearson correlation: {}; r^2: {}'.format(
-                    val_loss.item(),
-                    np.round(correlation, 2),
-                    r2(pred_test, batch.y)
-                ))
+                    print('Testing Loss: {}; Pearson correlation: {}; r^2: {}'.format(
+                        test_loss.item(),
+                        np.round(correlation, 2),
+                        r2(pred_test, batch.y)
+                    ))
+                    
+                    pred_test = pred_test.detach().cpu().numpy()
+                    gender_test = batch.gender.detach().cpu().numpy()
+                    y_true_test = batch.y.detach().cpu().numpy()
+                    
+                    # For males (gender == 1)
+                    plot_scatter_and_compute_metrics(y_true_test, pred_test, gender_test==1, "Male")
+
+                    # For females (gender == 0)
+                    plot_scatter_and_compute_metrics(y_true_test, pred_test, gender_test==0, "Female")
+
+                    # Print regression measures
+                    print(calculate_regression_measures(y_true_test, pred_test, gender_test))

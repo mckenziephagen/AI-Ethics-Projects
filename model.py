@@ -146,6 +146,7 @@ class GraphNetwork(torch.nn.Module):
     """
 
     """
+    
     def __init__(
         self,
         hidden_channels,

@@ -20,7 +20,9 @@ if __name__ == "__main__":
 
     train_dataset = dataset[:train_share]
     test_dataset = dataset[train_share:]
-    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+
+    ## fille in the group counts here e.g. [ number_of_lable_1, number_of_lable_0]
 
     weighting_matrix = 1/torch.tensor([366.0, 413.0]).to(device)
 
@@ -32,7 +34,7 @@ if __name__ == "__main__":
 
     optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=1e-3
+        lr=1e-2
     )
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
@@ -55,15 +57,15 @@ if __name__ == "__main__":
             out = model(batch).flatten()
 
             loss = torch.sqrt(loss_fn(out, batch.y))
-            
+
             sample_reweight = torch.tile(weighting_matrix, (batch.y.size()[0], 1))
 
             sample_reweight = torch.gather(
-                sample_reweight, 
-                1, 
+                sample_reweight,
+                1,
                 batch.gender.type(torch.int64).view(-1,1)
             )
-            
+
             loss = torch.mean(loss*sample_reweight)
             loss.backward()
 
@@ -91,11 +93,11 @@ if __name__ == "__main__":
                     sample_reweight = torch.tile(weighting_matrix, (batch.y.size()[0], 1))
 
                     sample_reweight = torch.gather(
-                        sample_reweight, 
-                        1, 
+                        sample_reweight,
+                        1,
                         batch.gender.type(torch.int64).view(-1,1)
                     )
-                    
+
                     test_loss = torch.mean(test_loss*sample_reweight)
 
                     print('Testing Loss: {}; Pearson correlation: {}; r^2: {}'.format(
@@ -103,11 +105,11 @@ if __name__ == "__main__":
                         np.round(correlation, 2),
                         r2(pred_test, batch.y)
                     ))
-                    
+
                     pred_test = pred_test.detach().cpu().numpy()
                     gender_test = batch.gender.detach().cpu().numpy()
                     y_true_test = batch.y.detach().cpu().numpy()
-                    
+
                     # For males (gender == 1)
                     plot_scatter_and_compute_metrics(y_true_test, pred_test, gender_test==1, "Male")
 

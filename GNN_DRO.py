@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     train_dataset = dataset[:train_share]
     test_dataset = dataset[train_share:]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
     model = GraphNetwork(
         64,
@@ -37,12 +37,13 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 
     criterion = nn.MSELoss(reduction='none')
-    
+
     loss_computer = LossComputer(
-        criterion=criterion, 
+        criterion=criterion,
         is_robust=True,
-        normalize_loss=True, 
-        group_counts=torch.tensor([478, 549]).float()
+        normalize_loss=True,
+        group_counts=torch.tensor([478, 549]).float(),
+        device=device
     )
 
     losses = []
@@ -90,11 +91,11 @@ if __name__ == "__main__":
                         np.round(correlation, 2),
                         r2(pred_test, batch.y)
                     ))
-                    
+
                     pred_test = pred_test.detach().cpu().numpy()
                     gender_test = batch.gender.detach().cpu().numpy()
                     y_true_test = batch.y.detach().cpu().numpy()
-                    
+
                     # For males (gender == 1)
                     plot_scatter_and_compute_metrics(y_true_test, pred_test, gender_test==1, "Male")
 

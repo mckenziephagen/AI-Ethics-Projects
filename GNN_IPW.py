@@ -18,7 +18,6 @@ if __name__ == "__main__":
     # Train/test split (80-20)
     train_share = int(len(dataset) * 0.8)
 
-
     train_dataset = dataset[:train_share]
     test_dataset = dataset[train_share:]
     device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")

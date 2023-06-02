@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 import torch
 
-from torchmetrics import R2Score,PearsonCorrCoef
+from torchmetrics import PearsonCorrCoef
+from torch_geometric.data import  DataLoader
+
 from utilities import *
 from model import *
 

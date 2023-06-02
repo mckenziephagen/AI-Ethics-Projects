@@ -37,7 +37,13 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 
     criterion = nn.MSELoss(reduction='none')
-    loss_computer = LossComputer(criterion=criterion, is_robust=True, normalize_loss=True, group_counts=torch.tensor([478, 549]).float())
+    
+    loss_computer = LossComputer(
+        criterion=criterion, 
+        is_robust=True,
+        normalize_loss=True, 
+        group_counts=torch.tensor([478, 549]).float()
+    )
 
     losses = []
     eval_metric = PearsonCorrCoef().to(device)

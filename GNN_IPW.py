@@ -54,7 +54,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             out = model(batch).flatten()
 
-            loss = loss_fn(out, batch.y)
+            loss = torch.sqrt(loss_fn(out, batch.y))
             
             sample_reweight = torch.tile(weighting_matrix, (batch.y.size()[0], 1))
 
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
             print(
                 f'Epoch: {epoch + 1:02d}, '
-                f'Training Loss: {torch.sqrt(loss):.4f}, '
+                f'Training Loss: {(loss):.4f}, '
             )
 
             with torch.no_grad():
@@ -86,7 +86,7 @@ if __name__ == "__main__":
                     pred_test = pred_test.flatten()
 
                     correlation = eval_metric(pred_test, batch.y).detach().cpu().numpy()
-                    test_loss = loss_fn(pred_test, batch.y)
+                    test_loss = torch.sqrt(loss_fn(pred_test, batch.y))
 
                     sample_reweight = torch.tile(weighting_matrix, (batch.y.size()[0], 1))
 

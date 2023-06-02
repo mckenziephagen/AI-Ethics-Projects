@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     train_dataset = dataset[:train_share]
     test_dataset = dataset[train_share:]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
     model = GraphNetwork(
         64,
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             out = model(batch).flatten()
 
-            loss = loss_fn(out, batch.y)
+            loss = torch.sqrt(loss_fn(out, batch.y))
 
             loss.backward()
             optimizer.step()
